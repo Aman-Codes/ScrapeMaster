@@ -1,0 +1,20 @@
+{
+  "name": "puppeter",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "test": "node node_modules/mocha/bin/mocha --timeout=30000 ./tests",
+    "start": "node server.js"
+  },
+  "author": "Aman Dwivedi",
+  "license": "ISC",
+  "dependencies": {
+    "chai": "^4.2.0",
+    "compression": "^1.7.4",
+    "express": "^4.17.1",
+    "mocha": "^8.2.1",
+    "prettier": "^2.2.1",
+    "puppeteer": "^5.5.0"
+  }
+}

@@ -5,30 +5,51 @@ exports.usernameExist = async (req, res) => {
   const username = req.params.username;
   try {
     const browser = await puppeteer.launch({ 
-      headless: true
+      headless: true,
     })
     const page = await browser.newPage()
     await page.setRequestInterception(true);
+    
     page.on('request', request => {
       if (request.resourceType() === 'image' || request.resourceType() === 'media' || request.resourceType() === 'stylesheet') {
         request.abort();
       }        
       else {
         request.continue();
-      }        
+      }
     });
-    await page.goto(`https://www.codechef.com/users/${username}`,
-    { waitUntil: 'domcontentloaded' });
-    // await page.waitForSelector('div');
+
+    // page.on('requestfailed', request => {
+    //   console.log(`url: ${request.url()}, errText: ${request.failure().errorText}, method: ${request.method()}`)
+    // });
+
+    await page.goto(`https://leetcode.com/${username}`,
+    { waitUntil: 'networkidle2' });
+    
+    // const dashboardResponse = await page.waitForResponse(response =>
+    //   response.url()
+    // );
+    // console.log("status code is ", dashboardResponse.status());
+
+    // await page.waitForSelector('span');    
     const title = await page.title();
-    console.log(title);
-    if(title === "CodeChef User | CodeChef") {
-      const innerText = await page.evaluate(() => document.querySelectorAll('h2')[1].innerText);
+    if (!title.includes("Page Not Found")) {
+      const user = await page.evaluate(() => {
+        const user = {
+          userName: '',
+          realName: '',
+        }
+        const userSelector = document.getElementsByClassName('ant-card-body')[0];
+        user.userName = userSelector.querySelectorAll("span")[1].innerText;
+        user.realName = userSelector.querySelectorAll("span")[0].innerText;
+  
+        return user;
+      });
       await browser.close();
       res.send({
         status: "success",
         usernameExist: "yes",
-        username: innerText,
+        user: user,
         message: "User with given username exist"
       });
     }
@@ -40,8 +61,10 @@ exports.usernameExist = async (req, res) => {
         message: "User with given username does not exist"
       });
     }
+    
   }
   catch (error) {
+    console.log(error);
     res.send({
       status: "error",
       message: error
@@ -66,7 +89,7 @@ exports.userDetails = async (req, res) => {
         request.continue();
       }
     });
-    await page.goto(`https://www.codechef.com/users/${username}`,
+    await page.goto(`https://leetcode.com/${username}`,
     { waitUntil: 'domcontentloaded' });
     const title = await page.title();
     console.log(title);
@@ -120,43 +143,77 @@ exports.problemsSolved = async (req, res) => {
   const username = req.params.username;
   try {
     const browser = await puppeteer.launch({ 
-      headless: true
+      headless: true,
     })
     const page = await browser.newPage()
     await page.setRequestInterception(true);
+    
     page.on('request', request => {
       if (request.resourceType() === 'image' || request.resourceType() === 'media' || request.resourceType() === 'stylesheet') {
         request.abort();
       }        
       else {
         request.continue();
-      }   
+      }
     });
-    await page.goto(`https://www.codechef.com/users/${username}`,
-    { waitUntil: 'domcontentloaded' });
+
+    await page.goto(`https://leetcode.com/${username}`,
+    { waitUntil: 'networkidle2' });
+
     const title = await page.title();
-    console.log(title);
-    if(title === "CodeChef User | CodeChef") {
-      
+    if (!title.includes("Page Not Found")) {
       const problemsSolveds = await page.evaluate(() => {
         const problemsSolved = {
-          fullySolved: 0,
-          partiallySolved: 0
-        }
-        const fullySolvedString =  document.querySelectorAll('h5')[0].innerText;
-        const partiallySolvedString =  document.querySelectorAll('h5')[1].innerText;
-        problemsSolved.fullySolved = fullySolvedString.match(/\(([^)]+)\)/)[1];
-        problemsSolved.partiallySolved = partiallySolvedString.match(/\(([^)]+)\)/)[1];
+          total: {
+            solved: 0,
+            total: 0,
+            percentage: 0,
+          },
+          easy: {
+            solved: 0,
+            total: 0,
+            percentage: 0,
+          },
+          medium: {
+            solved: 0,
+            total: 0,
+            percentage: 0,
+          },
+          hard: {
+            solved: 0,
+            total: 0,
+            percentage: 0,
+          },
+          acceptance: 0
+        };
+        const userSelector = document.getElementsByClassName('ant-card-body')[1];
+
+        problemsSolved.easy.solved = parseInt(userSelector.querySelectorAll("div")[14].querySelectorAll("span")[0].innerText);
+        problemsSolved.easy.total = parseInt(userSelector.querySelectorAll("div")[14].querySelectorAll("span")[1].innerText);
+        problemsSolved.easy.percentage = ((problemsSolved.easy.solved / problemsSolved.easy.total) * 100);
+
+        problemsSolved.medium.solved = parseInt(userSelector.querySelectorAll("div")[15].querySelectorAll("span")[0].innerText);
+        problemsSolved.medium.total = parseInt(userSelector.querySelectorAll("div")[15].querySelectorAll("span")[1].innerText);
+        problemsSolved.medium.percentage = ((problemsSolved.medium.solved / problemsSolved.medium.total) * 100);
+
+        problemsSolved.hard.solved = parseInt(userSelector.querySelectorAll("div")[18].querySelectorAll("span")[0].innerText);
+        problemsSolved.hard.total = parseInt(userSelector.querySelectorAll("div")[18].querySelectorAll("span")[1].innerText);
+        problemsSolved.hard.percentage = ((problemsSolved.hard.solved / problemsSolved.hard.total) * 100);
+
+        problemsSolved.total.solved = parseInt(userSelector.querySelectorAll("div")[3].innerText);
+        problemsSolved.total.total = parseInt(problemsSolved.easy.total + problemsSolved.medium.total + problemsSolved.hard.total);
+        problemsSolved.total.percentage = ((problemsSolved.total.solved / problemsSolved.total.total) * 100);
+
+        problemsSolved.acceptance = parseFloat(userSelector.querySelectorAll("div")[8].innerText);
+
         return problemsSolved;
       });
       await browser.close();
-      console.log(problemsSolveds.fullySolved);
-      console.log(problemsSolveds.partiallySolved);
       res.send({
         status: "success",
         usernameExist: "yes",
-        fullySolved: problemsSolveds.fullySolved,
-        partiallySolved: problemsSolveds.partiallySolved,
+        problemsSolved: problemsSolveds,
+        message: "User with given username exist"
       });
     }
     else {
@@ -167,8 +224,10 @@ exports.problemsSolved = async (req, res) => {
         message: "User with given username does not exist"
       });
     }
+    
   }
   catch (error) {
+    console.log(error);
     res.send({
       status: "error",
       message: error
@@ -193,7 +252,7 @@ exports.rating = async (req, res) => {
         request.continue();
       }
     });
-    await page.goto(`https://www.codechef.com/users/${username}`,
+    await page.goto(`https://leetcode.com/users/${username}`,
     { waitUntil: 'domcontentloaded' });
     const title = await page.title();
     console.log(title);
